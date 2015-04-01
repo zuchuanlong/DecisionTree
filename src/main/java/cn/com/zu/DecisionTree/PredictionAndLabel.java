@@ -1,4 +1,4 @@
-package cn.com.zu.testzu;
+package cn.com.zu.DecisionTree;
 
 import java.io.IOException;
 import java.net.URI;
