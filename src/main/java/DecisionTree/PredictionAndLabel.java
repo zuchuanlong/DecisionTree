@@ -1,4 +1,4 @@
-package cn.com.zu.DecisionTree;
+package DecisionTree;
 
 import java.io.IOException;
 import java.net.URI;
@@ -40,7 +40,7 @@ public class PredictionAndLabel {
 
 		// Set parameters.
 		// Empty categoricalFeaturesInfo indicates all features are continuous.
-		Integer numClasses = 2;
+		Integer numClasses = 5;
 		Map<Integer, Integer> categoricalFeaturesInfo = new HashMap<Integer, Integer>();
 		String impurity = "gini";
 		Integer maxDepth = 5;
