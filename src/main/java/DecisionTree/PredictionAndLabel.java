@@ -23,7 +23,15 @@ import org.apache.spark.mllib.util.MLUtils;
 import org.apache.spark.SparkConf;
 
 public class PredictionAndLabel {
+
 	public static void main(String[] args) {
+
+		decisionTree();
+
+	}
+
+	public static void decisionTree() {
+
 		SparkConf sparkConf = new SparkConf().setAppName("JavaDecisionTree")
 				.setMaster("local");
 		JavaSparkContext sc = new JavaSparkContext(sparkConf);
@@ -32,6 +40,7 @@ public class PredictionAndLabel {
 		String datapath = "test.txt";
 		JavaRDD<LabeledPoint> data = MLUtils.loadLibSVMFile(sc.sc(), datapath)
 				.toJavaRDD();
+
 		// Split the data into training and test sets (30% held out for testing)
 		JavaRDD<LabeledPoint>[] splits = data.randomSplit(new double[] { 0.7,
 				0.3 });
@@ -94,8 +103,8 @@ public class PredictionAndLabel {
 			Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
 			FileSystem hdfs = org.apache.hadoop.fs.FileSystem.get(hdfsURI,
 					hadoopConf);
-			System.out.print(hdfsURI.toString()); // XXX
-			System.out.print(fileOutURI.toString()); // XXX
+			System.out.print(hdfsURI.toString());
+			System.out.print(fileOutURI.toString());
 			hdfs.delete(new org.apache.hadoop.fs.Path(fileOut), true);
 			tweets.saveAsTextFile(fileOut);
 		} catch (URISyntaxException | IOException e) {

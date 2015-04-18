@@ -16,7 +16,15 @@ import org.apache.spark.mllib.linalg.Vectors;
 import org.apache.spark.SparkConf;
 
 public class KMeansExample {
+
 	public static void main(String[] args) {
+
+		kMeans();
+
+	}
+
+	public static void kMeans() {
+
 		SparkConf conf = new SparkConf().setAppName("K-means Example")
 				.setMaster("local");
 		JavaSparkContext sc = new JavaSparkContext(conf);
@@ -51,6 +59,7 @@ public class KMeansExample {
 		// Evaluate clustering by computing Within Set Sum of Squared Errors
 		double WSSSE = clusters.computeCost(parsedData.rdd());
 		System.out.println("Within Set Sum of Squared Errors = " + WSSSE);
+
 	}
 
 	protected static void saveRDDAsHDFS(JavaRDD<Integer> tweets, String fileOut) {
@@ -62,8 +71,8 @@ public class KMeansExample {
 			Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
 			FileSystem hdfs = org.apache.hadoop.fs.FileSystem.get(hdfsURI,
 					hadoopConf);
-			System.out.print(hdfsURI.toString()); // XXX
-			System.out.print(fileOutURI.toString()); // XXX
+			System.out.print(hdfsURI.toString());
+			System.out.print(fileOutURI.toString());
 			hdfs.delete(new org.apache.hadoop.fs.Path(fileOut), true);
 			tweets.saveAsTextFile(fileOut);
 		} catch (URISyntaxException | IOException e) {

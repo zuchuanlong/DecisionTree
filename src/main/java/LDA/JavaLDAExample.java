@@ -20,7 +20,15 @@ import org.apache.spark.rdd.RDD;
 import org.apache.spark.SparkConf;
 
 public class JavaLDAExample {
+
 	public static void main(String[] args) {
+
+		javaLDA();
+
+	}
+
+	public static void javaLDA() {
+
 		SparkConf conf = new SparkConf().setAppName("LDA Example").setMaster(
 				"local");
 		JavaSparkContext sc = new JavaSparkContext(conf);
