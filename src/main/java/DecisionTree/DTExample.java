@@ -42,8 +42,8 @@ public class DTExample {
 				.toJavaRDD();
 
 		// Split the data into training and test sets (30% held out for testing)
-		JavaRDD<LabeledPoint>[] splits = data.randomSplit(new double[] { 0.7,
-				0.3 });
+		JavaRDD<LabeledPoint>[] splits = data
+				.randomSplit(new double[] { 0.7, 0.3 });
 		JavaRDD<LabeledPoint> trainingData = splits[0];
 		JavaRDD<LabeledPoint> testData = splits[1];
 
@@ -56,16 +56,15 @@ public class DTExample {
 		Integer maxBins = 32;
 
 		// Train a DecisionTree model for classification.
-		final DecisionTreeModel model = DecisionTree.trainClassifier(
-				trainingData, numClasses, categoricalFeaturesInfo, impurity,
-				maxDepth, maxBins);
+		final DecisionTreeModel model = DecisionTree.trainClassifier(trainingData,
+				numClasses, categoricalFeaturesInfo, impurity, maxDepth, maxBins);
 
 		// Evaluate model on test instances and compute test error
 		JavaPairRDD<Double, Double> predictionAndLabel = testData
 				.mapToPair(new PairFunction<LabeledPoint, Double, Double>() {
 					public Tuple2<Double, Double> call(LabeledPoint p) {
-						return new Tuple2<Double, Double>(model.predict(p
-								.features()), p.label());
+						return new Tuple2<Double, Double>(model.predict(p.features()), p
+								.label());
 					}
 				});
 
@@ -87,22 +86,19 @@ public class DTExample {
 		// DecisionTreeModel sameModel = DecisionTreeModel.load(sc.sc(),
 		// "myModelPath");
 
-		DTExample.saveRDDAsHDFS(predictionAndLabel,
-				"predictionAndLabel");
-		// PredictionAndLabel.saveRDDAsHDFS(data, "data");
+		// saveRDDAsHDFS(predictionAndLabel, "predictionAndLabel");
+		saveRDDAsHDFS(data, "data");
 
 	}
 
-	protected static void saveRDDAsHDFS(JavaPairRDD<Double, Double> tweets,
-			String fileOut) {
+	public static void saveRDDAsHDFS(JavaRDD<LabeledPoint> tweets, String fileOut) {
 		try {
 			URI fileOutURI = new URI(fileOut);
-			URI hdfsURI = new URI(fileOutURI.getScheme(), null,
-					fileOutURI.getHost(), fileOutURI.getPort(), null, null,
-					null);
+			URI hdfsURI = new URI(fileOutURI.getScheme(), null, fileOutURI.getHost(),
+					fileOutURI.getPort(), null, null, null);
 			Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
-			FileSystem hdfs = org.apache.hadoop.fs.FileSystem.get(hdfsURI,
-					hadoopConf);
+			FileSystem hdfs = org.apache.hadoop.fs.FileSystem
+					.get(hdfsURI, hadoopConf);
 			System.out.print(hdfsURI.toString());
 			System.out.print(fileOutURI.toString());
 			hdfs.delete(new org.apache.hadoop.fs.Path(fileOut), true);
