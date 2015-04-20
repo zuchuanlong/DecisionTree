@@ -22,7 +22,7 @@ import org.apache.spark.mllib.tree.model.DecisionTreeModel;
 import org.apache.spark.mllib.util.MLUtils;
 import org.apache.spark.SparkConf;
 
-public class PredictionAndLabel {
+public class DTExample {
 
 	public static void main(String[] args) {
 
@@ -37,7 +37,7 @@ public class PredictionAndLabel {
 		JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
 		// Load and parse the data file.
-		String datapath = "test.txt";
+		String datapath = "DT_data.txt";
 		JavaRDD<LabeledPoint> data = MLUtils.loadLibSVMFile(sc.sc(), datapath)
 				.toJavaRDD();
 
@@ -87,7 +87,7 @@ public class PredictionAndLabel {
 		// DecisionTreeModel sameModel = DecisionTreeModel.load(sc.sc(),
 		// "myModelPath");
 
-		PredictionAndLabel.saveRDDAsHDFS(predictionAndLabel,
+		DTExample.saveRDDAsHDFS(predictionAndLabel,
 				"predictionAndLabel");
 		// PredictionAndLabel.saveRDDAsHDFS(data, "data");
 

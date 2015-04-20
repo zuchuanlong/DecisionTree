@@ -34,7 +34,7 @@ public class JavaLDAExample {
 		JavaSparkContext sc = new JavaSparkContext(conf);
 
 		// Load and parse the data
-		String path = "/Users/chuanlongzu/Downloads/spark-1.3.0/data/mllib/sample_lda_data.txt";
+		String path = "LDA_data.txt";
 		JavaRDD<String> data = sc.textFile(path);
 		JavaRDD<Vector> parsedData = data.map(new Function<String, Vector>() {
 			public Vector call(String s) {
@@ -77,11 +77,11 @@ public class JavaLDAExample {
 		}
 
 		RDD<Tuple2<Object, Vector>> td = ldaModel.topicDistributions();
-		JavaLDAExample.saveRDDAsHDFS(td, "td");
+		saveRDDAsHDFS(td, "td");
 
 	}
 
-	protected static void saveRDDAsHDFS(RDD<Tuple2<Object, Vector>> tweets,
+	public static void saveRDDAsHDFS(RDD<Tuple2<Object, Vector>> tweets,
 			String fileOut) {
 		try {
 			URI fileOutURI = new URI(fileOut);
