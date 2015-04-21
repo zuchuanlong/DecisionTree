@@ -16,6 +16,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.DataFrame;
 import org.apache.spark.sql.SQLContext;
 
@@ -24,12 +25,12 @@ public class JsonToRdd {
 	public static void main(String args[]) {
 
 		// saveJsonAsRdd();
-		parseJson();
+		dataFrame();
 
 	}
 
 	// save Json as JavaRDD
-	public static void parseJson() {
+	public static void saveJsonAsRdd() {
 
 		SparkConf sparkConf = new SparkConf().setAppName("SaveJsonAsRdd")
 				.setMaster("local");
@@ -42,17 +43,17 @@ public class JsonToRdd {
 			br = new BufferedReader(new FileReader(file));
 			List<String> jsonData = Arrays.asList(br.readLine());
 			JavaRDD<String> anotherPeopleRDD = sc.parallelize(jsonData);
-			saveRDDAsHDFS(anotherPeopleRDD, "JsonAsRdd");
+			// saveRDDAsHDFS(anotherPeopleRDD, "JsonAsRdd");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 
 	}
 
-	public static void saveJsonAsRdd() {
+	public static void dataFrame() {
 
-		SparkConf sparkConf = new SparkConf().setAppName("SaveJsonAsRdd")
-				.setMaster("local");
+		SparkConf sparkConf = new SparkConf().setAppName("DataFrame").setMaster(
+				"local");
 		JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
 		// sc is an existing JavaSparkContext.
@@ -82,6 +83,7 @@ public class JsonToRdd {
 				.sql("SELECT name FROM people WHERE age >= 13 AND age <= 19");
 
 		// teenagers.show();
+		// saveRDDAsHDFS(teenagers.toJSON(), "teenagers");
 
 		// Alternatively, a DataFrame can be created for a JSON dataset represented
 		// by
@@ -97,7 +99,7 @@ public class JsonToRdd {
 
 	}
 
-	public static void saveRDDAsHDFS(JavaRDD<String> tweets, String fileOut) {
+	public static void saveRDDAsHDFS(RDD<String> tweets, String fileOut) {
 		try {
 			URI fileOutURI = new URI(fileOut);
 			URI hdfsURI = new URI(fileOutURI.getScheme(), null, fileOutURI.getHost(),
