@@ -1,62 +1,46 @@
 package MapReduce;
 
-import java.io.IOException;
-import java.util.StringTokenizer;
+import java.util.Arrays;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.PairFunction;
+
+import scala.Tuple2;
 
 public class WordCount {
 
-	public static class TokenizerMapper extends
-			Mapper<Object, Text, Text, IntWritable> {
+	public static void main(String args[]) {
 
-		private final static IntWritable one = new IntWritable(1);
-		private Text word = new Text();
+		SparkConf conf = new SparkConf().setAppName("wordcount").setMaster("local");
+		JavaSparkContext sc = new JavaSparkContext(conf);
 
-		public void map(Object key, Text value, Context context)
-				throws IOException, InterruptedException {
-			StringTokenizer itr = new StringTokenizer(value.toString());
-			while (itr.hasMoreTokens()) {
-				word.set(itr.nextToken());
-				context.write(word, one);
+		String path = "WordCount.txt";
+
+		JavaRDD<String> file = sc.textFile(path);
+		JavaRDD<String> words = file.flatMap(new FlatMapFunction<String, String>() {
+			public Iterable<String> call(String s) {
+				return Arrays.asList(s.split(" "));
 			}
-		}
+		});
+		JavaPairRDD<String, Integer> pairs = words
+				.mapToPair(new PairFunction<String, String, Integer>() {
+					public Tuple2<String, Integer> call(String s) {
+						return new Tuple2<String, Integer>(s, 1);
+					}
+				});
+		JavaPairRDD<String, Integer> counts = pairs
+				.reduceByKey(new Function2<Integer, Integer, Integer>() {
+					public Integer call(Integer a, Integer b) {
+						return a + b;
+					}
+				});
+		counts.saveAsTextFile("WordCount");
+
 	}
 
-	public static class IntSumReducer extends
-			Reducer<Text, IntWritable, Text, IntWritable> {
-		private IntWritable result = new IntWritable();
-
-		public void reduce(Text key, Iterable<IntWritable> values,
-				Context context) throws IOException, InterruptedException {
-			int sum = 0;
-			for (IntWritable val : values) {
-				sum += val.get();
-			}
-			result.set(sum);
-			context.write(key, result);
-		}
-	}
-
-	public static void main(String[] args) throws Exception {
-		Configuration conf = new Configuration();
-		Job job = Job.getInstance(conf, "word count");
-		job.setJarByClass(WordCount.class);
-		job.setMapperClass(TokenizerMapper.class);
-		job.setCombinerClass(IntSumReducer.class);
-		job.setReducerClass(IntSumReducer.class);
-		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(IntWritable.class);
-		FileInputFormat.addInputPath(job, new Path("input"));
-		FileOutputFormat.setOutputPath(job, new Path("output"));
-		System.exit(job.waitForCompletion(true) ? 0 : 1);
-	}
 }

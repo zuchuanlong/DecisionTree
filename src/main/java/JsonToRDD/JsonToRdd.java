@@ -24,8 +24,8 @@ public class JsonToRdd {
 
 	public static void main(String args[]) {
 
-		// saveJsonAsRdd();
-		dataFrame();
+		saveJsonAsRdd();
+		// dataFrame();
 
 	}
 
@@ -37,8 +37,12 @@ public class JsonToRdd {
 		JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
 		String file = "Twitters.json";
-
-		BufferedReader br;
+		
+		JavaRDD<String> anotherPeopleRDD = sc.textFile(file);
+		
+		saveRDDAsHDFS(anotherPeopleRDD, "JsonAsRdd");
+		
+		/*BufferedReader br;
 		try {
 			br = new BufferedReader(new FileReader(file));
 			List<String> jsonData = Arrays.asList(br.readLine());
@@ -46,7 +50,7 @@ public class JsonToRdd {
 			// saveRDDAsHDFS(anotherPeopleRDD, "JsonAsRdd");
 		} catch (Exception e) {
 			e.printStackTrace();
-		}
+		}*/
 
 	}
 
@@ -99,7 +103,7 @@ public class JsonToRdd {
 
 	}
 
-	public static void saveRDDAsHDFS(RDD<String> tweets, String fileOut) {
+	public static void saveRDDAsHDFS(JavaRDD<String> tweets, String fileOut) {
 		try {
 			URI fileOutURI = new URI(fileOut);
 			URI hdfsURI = new URI(fileOutURI.getScheme(), null, fileOutURI.getHost(),
