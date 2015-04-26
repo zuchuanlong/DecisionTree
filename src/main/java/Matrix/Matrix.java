@@ -1,11 +1,10 @@
 package Matrix;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
@@ -14,7 +13,6 @@ import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -24,7 +22,6 @@ public class Matrix {
 	public static void main(String args[]) {
 
 		createMatrix();
-		// System.out.println(createRow("gut wrench part leav job lose touch"));
 
 	}
 
@@ -33,56 +30,52 @@ public class Matrix {
 		SparkConf conf = new SparkConf().setAppName("CreateMatrix").setMaster(
 				"local");
 		JavaSparkContext sc = new JavaSparkContext(conf);
-		JavaRDD<String> file = sc.textFile("Twitters.json");
+		JavaRDD<String> twitter = sc.textFile("Twitters.json");
+		JavaRDD<String> dictionary = sc.textFile("dictionary/part-00000");
 
-		JavaRDD<String> matrix = file.map(new Function<String, String>() {
-			public String call(String s) {
-				try {
-					JSONObject obj = (JSONObject) new JSONParser().parse(s);
-					return createRow(obj.get("tokens").toString());
-				} catch (ParseException e) {
-					e.printStackTrace();
-					return null;
-				}
+		Iterator twitterIte = twitter.toLocalIterator();
+		Iterator dictionaryIte = null;
+
+		String matrixIte = "";
+		String twitternext = null;
+		String dictionarynext = null;
+		List<String> tokenlist = null;
+		int tokenlength = 0;
+
+		int number = 0;
+
+		JSONObject obj = new JSONObject();
+		JSONParser parse = new JSONParser();
+
+		while (twitterIte.hasNext()) {
+
+			twitternext = twitterIte.next().toString();
+			try {
+				obj = (JSONObject) parse.parse(twitternext);
+			} catch (ParseException e) {
+				e.printStackTrace();
 			}
-		});
+			twitternext = obj.get("tokens").toString();
+			tokenlist = Arrays.asList(twitternext.split(" "));
+			tokenlength = tokenlist.size();
 
-		saveRDDAsHDFS(matrix, "matrix");
+			dictionaryIte = dictionary.toLocalIterator();
 
-	}
-
-	public static String createRow(String tokens) {
-
-		// String tokens = "gut wrench part leav job lose touch";
-		List<String> tokenlist = Arrays.asList(tokens.split(" "));
-
-		int tokenlength = tokenlist.size();
-
-		String row = "";
-
-		String file = "dictionary.txt";
-		BufferedReader br;
-		try {
-			br = new BufferedReader(new FileReader(file));
-
-			String line = null;
-
-			while ((line = br.readLine()) != null) {
+			while (dictionaryIte.hasNext()) {
+				dictionarynext = dictionaryIte.next().toString();
 				for (int n = 0; n < tokenlength; n++) {
-					if (line.equals(tokenlist.get(n))) {
-						row = row + " 1";
-						System.out.println("1111111");
-					} else {
-						row = row + " 0";
-						System.out.println("0000000");
+					if (dictionarynext.equals(tokenlist.get(n))) {
+						number++;
+						break;
 					}
 				}
+				matrixIte = matrixIte + " " + String.valueOf(number);
+				number = 0;
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
+			matrixIte = matrixIte + "\n";
 		}
 
-		return row;
+		saveRDDAsHDFS(sc.parallelize(Arrays.asList(matrixIte)), "matrix");
 
 	}
 

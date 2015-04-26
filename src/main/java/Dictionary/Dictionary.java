@@ -35,7 +35,7 @@ public class Dictionary {
 				"local");
 		JavaSparkContext sc = new JavaSparkContext(conf);
 
-		String path = "TwitterTest.json";
+		String path = "Twitters.json";
 
 		JavaRDD<String> file = sc.textFile(path);
 		JavaRDD<String> words = file.flatMap(new FlatMapFunction<String, String>() {

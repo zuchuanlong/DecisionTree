@@ -3,13 +3,15 @@ package LDA;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-
-import scala.Tuple2;
+import java.util.Arrays;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.log4j.Logger;
-import org.apache.spark.api.java.*;
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.mllib.clustering.DistributedLDAModel;
 import org.apache.spark.mllib.clustering.LDA;
@@ -17,7 +19,8 @@ import org.apache.spark.mllib.linalg.Matrix;
 import org.apache.spark.mllib.linalg.Vector;
 import org.apache.spark.mllib.linalg.Vectors;
 import org.apache.spark.rdd.RDD;
-import org.apache.spark.SparkConf;
+
+import scala.Tuple2;
 
 public class JavaLDAExample {
 
@@ -34,26 +37,33 @@ public class JavaLDAExample {
 		JavaSparkContext sc = new JavaSparkContext(conf);
 
 		// Load and parse the data
-		String path = "LDA_data.txt";
+		String path = "matrix/part-00000";
 		JavaRDD<String> data = sc.textFile(path);
-		JavaRDD<Vector> parsedData = data.map(new Function<String, Vector>() {
-			public Vector call(String s) {
-				String[] sarray = s.trim().split(" ");
-				double[] values = new double[sarray.length];
-				for (int i = 0; i < sarray.length; i++)
-					values[i] = Double.parseDouble(sarray[i]);
-				return Vectors.dense(values);
+
+		JavaRDD<String> filtereddata = data.filter((String inLine) -> {
+			if (inLine.length() > 2) {
+				return true;
 			}
+			return false;
 		});
+
+		JavaRDD<Vector> parsedData = filtereddata
+				.map(new Function<String, Vector>() {
+					public Vector call(String s) {
+						String[] sarray = s.trim().split(" ");
+						double[] values = new double[sarray.length];
+						for (int i = 0; i < sarray.length; i++)
+							values[i] = Double.parseDouble(sarray[i]);
+						return Vectors.dense(values);
+					}
+				});
 		// JavaLDAExample.saveRDDAsHDFS(parsedData, "parsedData");
 
 		// Index documents with unique IDs
-		JavaPairRDD<Long, Vector> corpus = JavaPairRDD
-				.fromJavaRDD(parsedData
-						.zipWithIndex()
-						.map(new Function<Tuple2<Vector, Long>, Tuple2<Long, Vector>>() {
-							public Tuple2<Long, Vector> call(
-									Tuple2<Vector, Long> doc_id) {
+		JavaPairRDD<Long, Vector> corpus = JavaPairRDD.fromJavaRDD(parsedData
+				.zipWithIndex().map(
+						new Function<Tuple2<Vector, Long>, Tuple2<Long, Vector>>() {
+							public Tuple2<Long, Vector> call(Tuple2<Vector, Long> doc_id) {
 								return doc_id.swap();
 							}
 						}));
@@ -76,23 +86,53 @@ public class JavaLDAExample {
 			System.out.println();
 		}
 
-		RDD<Tuple2<Object, Vector>> td = ldaModel.topicDistributions();
-		saveRDDAsHDFS(td, "td");
+		String topicmatrix = "";
+		for (int topic = 0; topic < 3; topic++) {
+			System.out.print("Topic " + topic + ":");
+			topicmatrix = topicmatrix + "Topic " + topic + ":";
+			for (int word = 0; word < ldaModel.vocabSize(); word++) {
+				System.out.print(" " + topics.apply(word, topic));
+				topicmatrix = topicmatrix + " " + topics.apply(word, topic);
+			}
+			topicmatrix = topicmatrix + "\n";
+			System.out.println();
+		}
 
+		saveRDDAsHDFS(sc.parallelize(Arrays.asList(topicmatrix)), "ldatopicmatrix");
+
+		RDD<Tuple2<Object, Vector>> twittermatrix = ldaModel.topicDistributions();
+		saveRDDAsHDFS(twittermatrix, "ldatwittermatrix");
+
+	}
+
+	public static void saveRDDAsHDFS(JavaRDD<String> tweets, String fileOut) {
+		try {
+			URI fileOutURI = new URI(fileOut);
+			URI hdfsURI = new URI(fileOutURI.getScheme(), null, fileOutURI.getHost(),
+					fileOutURI.getPort(), null, null, null);
+			Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
+			FileSystem hdfs = org.apache.hadoop.fs.FileSystem
+					.get(hdfsURI, hadoopConf);
+			System.out.print(hdfsURI.toString());
+			System.out.print(fileOutURI.toString());
+			hdfs.delete(new org.apache.hadoop.fs.Path(fileOut), true);
+			tweets.saveAsTextFile(fileOut);
+		} catch (URISyntaxException | IOException e) {
+			Logger.getRootLogger().error(e);
+		}
 	}
 
 	public static void saveRDDAsHDFS(RDD<Tuple2<Object, Vector>> tweets,
 			String fileOut) {
 		try {
 			URI fileOutURI = new URI(fileOut);
-			URI hdfsURI = new URI(fileOutURI.getScheme(), null,
-					fileOutURI.getHost(), fileOutURI.getPort(), null, null,
-					null);
+			URI hdfsURI = new URI(fileOutURI.getScheme(), null, fileOutURI.getHost(),
+					fileOutURI.getPort(), null, null, null);
 			Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
-			FileSystem hdfs = org.apache.hadoop.fs.FileSystem.get(hdfsURI,
-					hadoopConf);
-			System.out.print(hdfsURI.toString()); // XXX
-			System.out.print(fileOutURI.toString()); // XXX
+			FileSystem hdfs = org.apache.hadoop.fs.FileSystem
+					.get(hdfsURI, hadoopConf);
+			System.out.print(hdfsURI.toString());
+			System.out.print(fileOutURI.toString());
 			hdfs.delete(new org.apache.hadoop.fs.Path(fileOut), true);
 			tweets.saveAsTextFile(fileOut);
 		} catch (URISyntaxException | IOException e) {
