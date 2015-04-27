@@ -9,7 +9,6 @@ import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.ivy.ant.IvyPublish.PublishArtifact;
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -35,26 +34,26 @@ public class Lda {
 
 	SparkConf conf = null;
 	static JavaSparkContext sc = null;
+	static String twitterPath = null;
 
 	public static void main(String args[]) {
 
-		new Lda();
+		new Lda(args[0]);
 		createDictionary();
 		createMatrix();
 		createLDA();
 
 	}
 
-	public Lda() {
+	public Lda(String twitterpath) {
 		conf = new SparkConf().setAppName("LDA Example").setMaster("local");
 		sc = new JavaSparkContext(conf);
+		this.twitterPath = twitterpath;
 	}
 
 	public static void createDictionary() {
 
-		String path = "Twitters.json";
-
-		JavaRDD<String> file = sc.textFile(path);
+		JavaRDD<String> file = sc.textFile(twitterPath);
 		JavaRDD<String> words = file.flatMap(new FlatMapFunction<String, String>() {
 			public Iterable<String> call(String s) {
 				try {
@@ -142,8 +141,7 @@ public class Lda {
 	public static void createLDA() {
 
 		// Load and parse the data
-		String path = "matrix/part-00000";
-		JavaRDD<String> data = sc.textFile(path);
+		JavaRDD<String> data = sc.textFile("matrix/part-00000");
 
 		JavaRDD<String> filtereddata = data.filter((String inLine) -> {
 			if (inLine.length() > 2) {
