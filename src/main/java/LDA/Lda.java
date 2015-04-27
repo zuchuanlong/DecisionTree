@@ -35,20 +35,22 @@ public class Lda {
 	SparkConf conf = null;
 	static JavaSparkContext sc = null;
 	static String twitterPath = null;
+	static int topicnum = 0;
 
 	public static void main(String args[]) {
 
-		new Lda(args[0]);
+		new Lda(args[0], args[1]);
 		createDictionary();
 		createMatrix();
 		createLDA();
 
 	}
 
-	public Lda(String twitterpath) {
+	public Lda(String twitterpath, String topicnum) {
 		conf = new SparkConf().setAppName("LDA Example").setMaster("local");
 		sc = new JavaSparkContext(conf);
 		this.twitterPath = twitterpath;
+		this.topicnum = Integer.valueOf(topicnum);
 	}
 
 	public static void createDictionary() {
@@ -174,14 +176,14 @@ public class Lda {
 		// JavaLDAExample.saveRDDAsHDFS(corpus, "corpus");
 
 		// Cluster the documents into three topics using LDA
-		DistributedLDAModel ldaModel = new LDA().setK(3).run(corpus);
+		DistributedLDAModel ldaModel = new LDA().setK(topicnum).run(corpus);
 
 		// Output topics. Each is a distribution over words (matching word count
 		// vectors)
 		System.out.println("Learned topics (as distributions over vocab of "
 				+ ldaModel.vocabSize() + " words):");
 		Matrix topics = ldaModel.topicsMatrix();
-		for (int topic = 0; topic < 3; topic++) {
+		for (int topic = 0; topic < topicnum; topic++) {
 			System.out.print("Topic " + topic + ":");
 			for (int word = 0; word < ldaModel.vocabSize(); word++) {
 				System.out.print(" " + topics.apply(word, topic));
@@ -190,7 +192,7 @@ public class Lda {
 		}
 
 		String topicmatrix = "";
-		for (int topic = 0; topic < 3; topic++) {
+		for (int topic = 0; topic < topicnum; topic++) {
 			System.out.print("Topic " + topic + ":");
 			topicmatrix = topicmatrix + "Topic " + topic + ":";
 			for (int word = 0; word < ldaModel.vocabSize(); word++) {
