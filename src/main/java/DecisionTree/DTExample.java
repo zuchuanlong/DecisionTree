@@ -100,7 +100,7 @@ public class DTExample {
 		JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
 		// Load and parse the data file.
-		String datapath = "DT_data.txt";
+		String datapath = "weather.txt";
 		JavaRDD<LabeledPoint> data = MLUtils.loadLibSVMFile(sc.sc(), datapath)
 				.toJavaRDD();
 		// Split the data into training and test sets (30% held out for testing)
