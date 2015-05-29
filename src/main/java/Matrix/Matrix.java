@@ -30,8 +30,8 @@ public class Matrix {
 		SparkConf conf = new SparkConf().setAppName("CreateMatrix").setMaster(
 				"local");
 		JavaSparkContext sc = new JavaSparkContext(conf);
-		JavaRDD<String> twitter = sc.textFile("Twitters.json");
-		JavaRDD<String> dictionary = sc.textFile("dictionary/part-00000");
+		JavaRDD<String> twitter = sc.textFile("hdfs://localhost:9000/data/Twitters.json");
+		JavaRDD<String> dictionary = sc.textFile("hdfs://localhost:9000/data/dictionary.txt");
 
 		Iterator twitterIte = twitter.toLocalIterator();
 		Iterator dictionaryIte = null;
@@ -75,7 +75,7 @@ public class Matrix {
 			matrixIte = matrixIte + "\n";
 		}
 
-		saveRDDAsHDFS(sc.parallelize(Arrays.asList(matrixIte)), "matrix");
+		saveRDDAsHDFS(sc.parallelize(Arrays.asList(matrixIte)), "hdfs://localhost:9000/data/matrix.txt");
 
 	}
 

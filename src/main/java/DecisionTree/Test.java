@@ -11,8 +11,10 @@ public class Test {
 		SparkConf conf = new SparkConf().setAppName("wordcount").setMaster("local");
 		JavaSparkContext sc = new JavaSparkContext(conf);
 
-		JavaRDD<String> file1 = sc.textFile("test1.txt");
-		JavaRDD<String> file2 = sc.textFile("test2.txt");
+		JavaRDD<String> file1 = sc
+				.textFile("hdfs://localhost:9000/data/dictionary.txt");
+		JavaRDD<String> file2 = sc
+				.textFile("hdfs://localhost:9000/data/weather.json");
 
 		file1.intersection(file2).saveAsTextFile("test");
 

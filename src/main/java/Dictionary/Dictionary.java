@@ -35,7 +35,7 @@ public class Dictionary {
 				"local");
 		JavaSparkContext sc = new JavaSparkContext(conf);
 
-		String path = "Twitters.json";
+		String path = "hdfs://localhost:9000/data/Twitters.json";
 
 		JavaRDD<String> file = sc.textFile(path);
 		JavaRDD<String> words = file.flatMap(new FlatMapFunction<String, String>() {
@@ -52,22 +52,18 @@ public class Dictionary {
 
 		// saveRDDAsHDFS(words, "dictionary");
 
-		JavaPairRDD<String, Integer> pairs = words
-				.mapToPair(new PairFunction<String, String, Integer>() {
-					public Tuple2<String, Integer> call(String s) {
-						return new Tuple2<String, Integer>(s, 1);
-					}
-				});
-		JavaPairRDD<String, Integer> counts = pairs
-				.reduceByKey(new Function2<Integer, Integer, Integer>() {
-					public Integer call(Integer a, Integer b) {
-						return a + b;
-					}
-				});
+		/*
+		 * JavaPairRDD<String, Integer> pairs = words .mapToPair(new
+		 * PairFunction<String, String, Integer>() { public Tuple2<String, Integer>
+		 * call(String s) { return new Tuple2<String, Integer>(s, 1); } });
+		 * JavaPairRDD<String, Integer> counts = pairs .reduceByKey(new
+		 * Function2<Integer, Integer, Integer>() { public Integer call(Integer a,
+		 * Integer b) { return a + b; } });
+		 */
 
 		// saveRDDAsHDFS(counts, "dictionary");
 
-		saveRDDAsHDFS(counts.keys(), "dictionary");
+		saveRDDAsHDFS(words.distinct(), "hdfs://localhost:9000/data/dictionary.txt");
 
 	}
 

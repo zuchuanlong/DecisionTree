@@ -3,11 +3,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>cn.com.zu</groupId>
-  <artifactId>testzu</artifactId>
   <version>1.0.0</version>
   <packaging>jar</packaging>
 
-  <name>testzu</name>
+  <name>TwitterML</name>
   <url>http://maven.apache.org</url>
 
   <properties>
@@ -36,9 +35,10 @@
     </dependency>
 
     <dependency>
-    	<groupId>com.googlecode.json-simple</groupId>
-    	<artifactId>json-simple</artifactId>
-    	<version>1.1.1</version>
+    	<groupId>org.json</groupId>
+    	<artifactId>json</artifactId>
+    	<version>20141113</version>
     </dependency>
   </dependencies>
+  <artifactId>TwitterML</artifactId>
 </project>

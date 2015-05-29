@@ -1,125 +1,119 @@
 package DecisionTree;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.List;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
+import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.mllib.clustering.KMeans;
 import org.apache.spark.mllib.clustering.KMeansModel;
 import org.apache.spark.mllib.linalg.Vector;
 import org.apache.spark.mllib.linalg.Vectors;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import org.json.JSONObject;
+
+import au.org.aurin.tweetcommons.Tweet;
 
 public class DecisionTree {
 
-	SparkConf sparkConf = null;
-	static JavaSparkContext sc = null;
+  public static void main(String args[]) {
 
-	public static void main(String args[]) {
+    SparkConf sparkConf = new SparkConf().setAppName("DataFrame").setMaster(
+        "local");
+    JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
-		new DecisionTree();
-		createWeather();
+    JavaRDD<String> weather = sc
+        .textFile("hdfs://localhost:9000/data/weather.json");
 
-	}
+    List<String> temList = createKMeansWeather(weather, "temperature", 5);
+    List<String> humidList = createKMeansWeather(weather, "humidity", 5);
+    List<String> windList = createKMeansWeather(weather, "wind", 5);
+    List<String> cloudList = createKMeansWeather(weather, "cloud", 5);
+    List<String> rainList = createKMeansWeather(weather, "rain", 5);
 
-	public DecisionTree() {
+    HashMap<String, String> weatherHM = new HashMap<>();
+    String[] weatherArray = new String[temList.size()];
 
-		sparkConf = new SparkConf().setAppName("DataFrame").setMaster("local");
-		sc = new JavaSparkContext(sparkConf);
+    for (int n = 0; n < temList.size(); n++) {
+      for (int m = 0; m < 5; m++) {
+        switch (m) {
+        case 0:
+          weatherArray[n] = "1:" + cutDouble(temList.get(n));
+          break;
+        case 1:
+          weatherArray[n] = weatherArray[n] + " 2:"
+              + cutDouble(humidList.get(n));
+          break;
+        case 2:
+          weatherArray[n] = weatherArray[n] + " 3:"
+              + cutDouble(windList.get(n));
+          break;
+        case 3:
+          weatherArray[n] = weatherArray[n] + " 4:"
+              + cutDouble(cloudList.get(n));
+          break;
+        case 4:
+          weatherArray[n] = weatherArray[n] + " 5:"
+              + cutDouble(rainList.get(n));
+          break;
+        }
+      }
+      weatherHM.put(String.valueOf(n), weatherArray[n]);
+    }
 
-	}
+    for (int n = 0; n < temList.size(); n++) {
 
-	public static void createWeather() {
+      System.out.println(weatherArray[n]);
 
-		JavaRDD<String> weather = sc.textFile("weather.json");
+    }
 
-		createWeatherHDFS(weather, "temperature", "weather/temperature");
-		createWeatherHDFS(weather, "humidity", "weather/humidity");
-		createWeatherHDFS(weather, "wind", "weather/wind");
-		createWeatherHDFS(weather, "cloud", "weather/cloud");
-		createWeatherHDFS(weather, "rain", "weather/rain");
+    Broadcast<HashMap<String, String>> broadcastWeather = sc
+        .broadcast(weatherHM);
 
-		kMeans("weather/temperature/part-00000", 5, "weatherKMeans/temperature");
-		kMeans("weather/humidity/part-00000", 5, "weatherKMeans/humidity");
-		kMeans("weather/wind/part-00000", 5, "weatherKMeans/wind");
-		kMeans("weather/cloud/part-00000", 5, "weatherKMeans/cloud");
-		kMeans("weather/rain/part-00000", 5, "weatherKMeans/rain");
+  }
 
-	}
+  public static String cutDouble(String s) {
+    return new BigDecimal(Double.valueOf(s)).setScale(1,
+        BigDecimal.ROUND_HALF_UP).toString();
+  }
 
-	public static void createWeatherHDFS(JavaRDD<String> weather, String key,
-			String savepath) {
+  public static List<String> createKMeansWeather(JavaRDD<String> weather,
+      String key, int cluster) {
 
-		JavaRDD<String> attribute = weather.map(new Function<String, String>() {
-			public String call(String s) {
-				try {
-					JSONObject obj = (JSONObject) new JSONParser().parse(s);
-					return obj.get(key).toString();
-				} catch (ParseException e) {
-					e.printStackTrace();
-					return null;
-				}
-			}
-		});
+    // Pick up the specific attribute from weather
+    JavaRDD<String> attribute = weather.map((s) -> {
+      try {
+        JSONObject obj = new JSONObject(s);
+        return obj.get(key).toString();
+      } catch (Exception e) {
+        e.printStackTrace();
+        return null;
+      }
+    });
 
-		saveRDDAsHDFS(attribute, savepath);
+    // KMeans
+    JavaRDD<Vector> parsedData = attribute.map((s) -> {
+      return Vectors.dense(Double.parseDouble(s));
+    });
+    parsedData.cache();
 
-	}
+    int numIterations = 20;
+    KMeansModel clusters = KMeans.train(parsedData.rdd(), cluster,
+        numIterations);
 
-	public static void kMeans(String inputfile, int cluster, String savepath) {
+    Vector[] v = clusters.clusterCenters();
 
-		JavaRDD<String> data = sc.textFile(inputfile);
-		JavaRDD<Vector> parsedData = data.map(new Function<String, Vector>() {
-			public Vector call(String s) {
-				String[] sarray = s.split(" ");
-				double[] values = new double[sarray.length];
-				for (int i = 0; i < sarray.length; i++)
-					values[i] = Double.parseDouble(sarray[i]);
-				return Vectors.dense(values);
-			}
-		});
-		parsedData.cache();
+    return clusters.predict(parsedData).map((x) -> {
+      return v[x].toString().replace("[", "").replace("]", "");
+    }).collect();
 
-		int numClusters = cluster;
-		int numIterations = 20;
-		KMeansModel clusters = KMeans.train(parsedData.rdd(), numClusters,
-				numIterations);
+  }
 
-		Vector[] v = clusters.clusterCenters();
+  public static void createSVM(JavaRDD<Tweet> parsedTweets,
+      Broadcast<HashMap<String, String>> broadcastWeather) {
 
-		saveRDDAsHDFS(
-				clusters.predict(parsedData).map(new Function<Integer, String>() {
-					public String call(Integer x) {
-						return v[x].toString().replace("[", "").replace("]", "");
-					}
-				}), savepath);
-
-	}
-
-	public static void saveRDDAsHDFS(JavaRDD<String> tweets, String fileOut) {
-		try {
-			URI fileOutURI = new URI(fileOut);
-			URI hdfsURI = new URI(fileOutURI.getScheme(), null, fileOutURI.getHost(),
-					fileOutURI.getPort(), null, null, null);
-			Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
-			FileSystem hdfs = org.apache.hadoop.fs.FileSystem
-					.get(hdfsURI, hadoopConf);
-			System.out.print(hdfsURI.toString());
-			System.out.print(fileOutURI.toString());
-			hdfs.delete(new org.apache.hadoop.fs.Path(fileOut), true);
-			tweets.saveAsTextFile(fileOut);
-		} catch (URISyntaxException | IOException e) {
-			Logger.getRootLogger().error(e);
-		}
-	}
+  }
 
 }

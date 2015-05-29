@@ -25,152 +25,172 @@ import org.apache.spark.SparkConf;
 
 public class DTExample {
 
-	public static void main(String[] args) {
+  public static void main(String[] args) {
 
-		// decisionTreeClassification();
-		decisionTreeRegression();
+    decisionTreeClassification();
+    // decisionTreeRegression();
 
-	}
+  }
 
-	public static void decisionTreeClassification() {
+  public static void decisionTreeClassification() {
 
-		SparkConf sparkConf = new SparkConf().setAppName("JavaDecisionTree")
-				.setMaster("local");
-		JavaSparkContext sc = new JavaSparkContext(sparkConf);
+    SparkConf sparkConf = new SparkConf().setAppName("JavaDecisionTree")
+        .setMaster("local");
+    JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
-		// Load and parse the data file.
-		String datapath = "DT_data.txt";
-		JavaRDD<LabeledPoint> data = MLUtils.loadLibSVMFile(sc.sc(), datapath)
-				.toJavaRDD();
+    // Load and parse the data file.
+    String datapath = "DT_data.txt";
+    JavaRDD<LabeledPoint> data = MLUtils.loadLibSVMFile(sc.sc(), datapath)
+        .toJavaRDD();
 
-		// Split the data into training and test sets (30% held out for testing)
-		JavaRDD<LabeledPoint>[] splits = data
-				.randomSplit(new double[] { 0.7, 0.3 });
-		JavaRDD<LabeledPoint> trainingData = splits[0];
-		JavaRDD<LabeledPoint> testData = splits[1];
+    saveRDDAsHDFS(data, "SVM");
 
-		// Set parameters.
-		// Empty categoricalFeaturesInfo indicates all features are continuous.
-		Integer numClasses = 5;
-		Map<Integer, Integer> categoricalFeaturesInfo = new HashMap<Integer, Integer>();
-		String impurity = "gini";
-		Integer maxDepth = 5;
-		Integer maxBins = 32;
+    // Split the data into training and test sets (30% held out for testing)
+    JavaRDD<LabeledPoint>[] splits = data
+        .randomSplit(new double[] { 0.7, 0.3 });
+    JavaRDD<LabeledPoint> trainingData = splits[0];
+    JavaRDD<LabeledPoint> testData = splits[1];
 
-		// Train a DecisionTree model for classification.
-		final DecisionTreeModel model = DecisionTree.trainClassifier(trainingData,
-				numClasses, categoricalFeaturesInfo, impurity, maxDepth, maxBins);
+    // Set parameters.
+    // Empty categoricalFeaturesInfo indicates all features are continuous.
+    Integer numClasses = 5;
+    Map<Integer, Integer> categoricalFeaturesInfo = new HashMap<Integer, Integer>();
+    String impurity = "gini";
+    Integer maxDepth = 5;
+    Integer maxBins = 32;
 
-		// Evaluate model on test instances and compute test error
-		JavaPairRDD<Double, Double> predictionAndLabel = testData
-				.mapToPair(new PairFunction<LabeledPoint, Double, Double>() {
-					public Tuple2<Double, Double> call(LabeledPoint p) {
-						return new Tuple2<Double, Double>(model.predict(p.features()), p
-								.label());
-					}
-				});
+    // Train a DecisionTree model for classification.
+    final DecisionTreeModel model = DecisionTree.trainClassifier(trainingData,
+        numClasses, categoricalFeaturesInfo, impurity, maxDepth, maxBins);
 
-		// System.out.println(predictionAndLabel);
+    // Evaluate model on test instances and compute test error
+    JavaPairRDD<Double, Double> predictionAndLabel = testData
+        .mapToPair(new PairFunction<LabeledPoint, Double, Double>() {
+          public Tuple2<Double, Double> call(LabeledPoint p) {
+            return new Tuple2<Double, Double>(model.predict(p.features()), p
+                .label());
+          }
+        });
 
-		Double testErr = 1.0
-				* predictionAndLabel.filter(
-						new Function<Tuple2<Double, Double>, Boolean>() {
-							public Boolean call(Tuple2<Double, Double> pl) {
-								return !pl._1().equals(pl._2());
-							}
-						}).count() / testData.count();
-		System.out.println("Test Error: " + testErr);
-		System.out.println("Learned classification tree model:\n"
-				+ model.toDebugString());
+    // System.out.println(predictionAndLabel);
 
-		// Save and load model
-		// model.save(sc.sc(), "myModelPath");
-		// DecisionTreeModel sameModel = DecisionTreeModel.load(sc.sc(),
-		// "myModelPath");
+    Double testErr = 1.0
+        * predictionAndLabel.filter(
+            new Function<Tuple2<Double, Double>, Boolean>() {
+              public Boolean call(Tuple2<Double, Double> pl) {
+                return !pl._1().equals(pl._2());
+              }
+            }).count() / testData.count();
+    System.out.println("Test Error: " + testErr);
+    System.out.println("Learned classification tree model:\n"
+        + model.toDebugString());
 
-		// saveRDDAsHDFS(predictionAndLabel, "predictionAndLabel");
-		// saveRDDAsHDFS(data, "data");
+    // Save and load model
+    model.save(sc.sc(), "myModelPath");
+    // DecisionTreeModel sameModel = DecisionTreeModel
+    // .load(sc.sc(), "myModelPath");
 
-	}
+    // saveRDDAsHDFS(predictionAndLabel, "predictionAndLabel");
+    // saveRDDAsHDFS(data, "data");
 
-	public static void decisionTreeRegression() {
+  }
 
-		SparkConf sparkConf = new SparkConf().setAppName("JavaDecisionTree")
-				.setMaster("local");
-		JavaSparkContext sc = new JavaSparkContext(sparkConf);
+  public static void decisionTreeRegression() {
 
-		// Load and parse the data file.
-		String datapath = "weather.txt";
-		JavaRDD<LabeledPoint> data = MLUtils.loadLibSVMFile(sc.sc(), datapath)
-				.toJavaRDD();
-		// Split the data into training and test sets (30% held out for testing)
-		JavaRDD<LabeledPoint>[] splits = data
-				.randomSplit(new double[] { 0.7, 0.3 });
-		JavaRDD<LabeledPoint> trainingData = splits[0];
-		JavaRDD<LabeledPoint> testData = splits[1];
+    SparkConf sparkConf = new SparkConf().setAppName("JavaDecisionTree")
+        .setMaster("local");
+    JavaSparkContext sc = new JavaSparkContext(sparkConf);
 
-		// Set parameters.
-		// Empty categoricalFeaturesInfo indicates all features are continuous.
-		Map<Integer, Integer> categoricalFeaturesInfo = new HashMap<Integer, Integer>();
-		String impurity = "variance";
-		Integer maxDepth = 5;
-		Integer maxBins = 32;
+    // Load and parse the data file.
+    String datapath = "DT_data.txt";
+    JavaRDD<LabeledPoint> data = MLUtils.loadLibSVMFile(sc.sc(), datapath)
+        .toJavaRDD();
+    saveRDDAsHDFS(data, "SVM");
+    // Split the data into training and test sets (30% held out for testing)
+    JavaRDD<LabeledPoint>[] splits = data
+        .randomSplit(new double[] { 0.7, 0.3 });
+    JavaRDD<LabeledPoint> trainingData = splits[0];
+    JavaRDD<LabeledPoint> testData = splits[1];
 
-		// Train a DecisionTree model.
-		final DecisionTreeModel model = DecisionTree.trainRegressor(trainingData,
-				categoricalFeaturesInfo, impurity, maxDepth, maxBins);
+    // Set parameters.
+    // Empty categoricalFeaturesInfo indicates all features are continuous.
+    Map<Integer, Integer> categoricalFeaturesInfo = new HashMap<Integer, Integer>();
+    String impurity = "variance";
+    Integer maxDepth = 5;
+    Integer maxBins = 32;
 
-		// Evaluate model on test instances and compute test error
-		JavaPairRDD<Double, Double> predictionAndLabel = testData
-				.mapToPair(new PairFunction<LabeledPoint, Double, Double>() {
-					@Override
-					public Tuple2<Double, Double> call(LabeledPoint p) {
-						return new Tuple2<Double, Double>(model.predict(p.features()), p
-								.label());
-					}
-				});
-		Double testMSE = predictionAndLabel.map(
-				new Function<Tuple2<Double, Double>, Double>() {
-					@Override
-					public Double call(Tuple2<Double, Double> pl) {
-						Double diff = pl._1() - pl._2();
-						return diff * diff;
-					}
-				}).reduce(new Function2<Double, Double, Double>() {
-			@Override
-			public Double call(Double a, Double b) {
-				return a + b;
-			}
-		})
-				/ data.count();
-		System.out.println("Test Mean Squared Error: " + testMSE);
-		System.out.println("Learned regression tree model:\n"
-				+ model.toDebugString());
+    // Train a DecisionTree model.
+    final DecisionTreeModel model = DecisionTree.trainRegressor(trainingData,
+        categoricalFeaturesInfo, impurity, maxDepth, maxBins);
 
-		// Save and load model
-		// model.save(sc.sc(), "myModelPath");
-		// DecisionTreeModel sameModel = DecisionTreeModel
-		// .load(sc.sc(), "myModelPath");
+    // Evaluate model on test instances and compute test error
+    JavaPairRDD<Double, Double> predictionAndLabel = testData
+        .mapToPair(new PairFunction<LabeledPoint, Double, Double>() {
+          @Override
+          public Tuple2<Double, Double> call(LabeledPoint p) {
+            return new Tuple2<Double, Double>(model.predict(p.features()), p
+                .label());
+          }
+        });
+    Double testMSE = predictionAndLabel.map(
+        new Function<Tuple2<Double, Double>, Double>() {
+          @Override
+          public Double call(Tuple2<Double, Double> pl) {
+            Double diff = pl._1() - pl._2();
+            return diff * diff;
+          }
+        }).reduce(new Function2<Double, Double, Double>() {
+      @Override
+      public Double call(Double a, Double b) {
+        return a + b;
+      }
+    })
+        / data.count();
+    System.out.println("Test Mean Squared Error: " + testMSE);
+    System.out.println("Learned regression tree model:\n"
+        + model.toDebugString());
 
-		saveRDDAsHDFS(predictionAndLabel, "predictionAndLabel");
+    // Save and load model
+    model.save(sc.sc(), "myModelPath");
+    // DecisionTreeModel sameModel = DecisionTreeModel
+    // .load(sc.sc(), "myModelPath");
 
-	}
+    saveRDDAsHDFS(predictionAndLabel, "predictionAndLabel");
 
-	public static void saveRDDAsHDFS(JavaPairRDD<Double, Double> tweets,
-			String fileOut) {
-		try {
-			URI fileOutURI = new URI(fileOut);
-			URI hdfsURI = new URI(fileOutURI.getScheme(), null, fileOutURI.getHost(),
-					fileOutURI.getPort(), null, null, null);
-			Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
-			FileSystem hdfs = org.apache.hadoop.fs.FileSystem
-					.get(hdfsURI, hadoopConf);
-			System.out.print(hdfsURI.toString());
-			System.out.print(fileOutURI.toString());
-			hdfs.delete(new org.apache.hadoop.fs.Path(fileOut), true);
-			tweets.saveAsTextFile(fileOut);
-		} catch (URISyntaxException | IOException e) {
-			Logger.getRootLogger().error(e);
-		}
-	}
+  }
+
+  public static void saveRDDAsHDFS(JavaPairRDD<Double, Double> tweets,
+      String fileOut) {
+    try {
+      URI fileOutURI = new URI(fileOut);
+      URI hdfsURI = new URI(fileOutURI.getScheme(), null, fileOutURI.getHost(),
+          fileOutURI.getPort(), null, null, null);
+      Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
+      FileSystem hdfs = org.apache.hadoop.fs.FileSystem
+          .get(hdfsURI, hadoopConf);
+      System.out.print(hdfsURI.toString());
+      System.out.print(fileOutURI.toString());
+      hdfs.delete(new org.apache.hadoop.fs.Path(fileOut), true);
+      tweets.saveAsTextFile(fileOut);
+    } catch (URISyntaxException | IOException e) {
+      Logger.getRootLogger().error(e);
+    }
+  }
+
+  public static void saveRDDAsHDFS(JavaRDD<LabeledPoint> tweets, String fileOut) {
+    try {
+      URI fileOutURI = new URI(fileOut);
+      URI hdfsURI = new URI(fileOutURI.getScheme(), null, fileOutURI.getHost(),
+          fileOutURI.getPort(), null, null, null);
+      Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
+      FileSystem hdfs = org.apache.hadoop.fs.FileSystem
+          .get(hdfsURI, hadoopConf);
+      System.out.print(hdfsURI.toString());
+      System.out.print(fileOutURI.toString());
+      hdfs.delete(new org.apache.hadoop.fs.Path(fileOut), true);
+      tweets.saveAsTextFile(fileOut);
+    } catch (URISyntaxException | IOException e) {
+      Logger.getRootLogger().error(e);
+    }
+  }
 }
